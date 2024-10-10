@@ -71,7 +71,7 @@ test_expect_success 'add another remote' '
 		cd test &&
 		git remote add -f second ../two &&
 		tokens_match "origin second" "$(git remote)" &&
-		check_tracking_branch second main side another &&
+		check_tracking_branch second main side another HEAD &&
 		git for-each-ref "--format=%(refname)" refs/remotes |
 		sed -e "/^refs\/remotes\/origin\//d" \
 		    -e "/^refs\/remotes\/second\//d" >actual &&
@@ -429,12 +429,51 @@ test_expect_success 'set-head --auto' '
 	)
 '
 
+test_expect_success 'set-head --auto detects creation' '
+	(
+		cd test &&
+		rm .git/refs/remotes/origin/HEAD &&
+		git remote set-head --auto origin >output &&
+		echo "'\''origin/HEAD'\'' is now created and points to '\''main'\''" >expect &&
+		test_cmp expect output
+	)
+'
+
+test_expect_success 'set-head --auto detects no change' '
+	(
+		cd test &&
+		git remote set-head --auto origin >output &&
+		echo "'\''origin/HEAD'\'' is unchanged and points to '\''main'\''" >expect &&
+		test_cmp expect output
+	)
+'
+
+test_expect_success 'set-head --auto detects change' '
+	(
+		cd test &&
+		echo "ref: refs/remotes/origin/ahead" >.git/refs/remotes/origin/HEAD &&
+		git remote set-head --auto origin >output &&
+		echo "'\''origin/HEAD'\'' has changed from '\''ahead'\'' and now points to '\''main'\''" >expect &&
+		test_cmp expect output
+	)
+'
+
+test_expect_success 'set-head --auto detects strange ref' '
+	(
+		cd test &&
+		echo "ref: refs/heads/main" >.git/refs/remotes/origin/HEAD &&
+		git remote set-head --auto origin >output &&
+		echo "'\''origin/HEAD'\'' used to point to '\''refs/heads/main'\'' (which is unusual), but now points to '\''main'\''" >expect &&
+		test_cmp expect output
+	)
+'
+
 test_expect_success 'set-head --auto has no problem w/multiple HEADs' '
 	(
 		cd test &&
 		git fetch two "refs/heads/*:refs/remotes/two/*" &&
 		git remote set-head --auto two >output 2>&1 &&
-		echo "two/HEAD set to main" >expect &&
+		echo "'\''two/HEAD'\'' is unchanged and points to '\''main'\''" >expect &&
 		test_cmp expect output
 	)
 '
@@ -449,6 +488,17 @@ test_expect_success 'set-head explicit' '
 		git remote set-head origin side2 &&
 		git symbolic-ref refs/remotes/origin/HEAD >output &&
 		git remote set-head origin main &&
+		test_cmp expect output
+	)
+'
+
+
+test_expect_success 'set-head --auto reports change' '
+	(
+		cd test &&
+		git remote set-head origin side2 &&
+		git remote set-head --auto origin >output 2>&1 &&
+		echo "'\''origin/HEAD'\'' has changed from '\''side2'\'' and now points to '\''main'\''" >expect &&
 		test_cmp expect output
 	)
 '
@@ -714,6 +764,7 @@ test_expect_success 'reject --no-no-tags' '
 cat >one/expect <<\EOF
   apis/main
   apis/side
+  drosophila/HEAD -> drosophila/main
   drosophila/another
   drosophila/main
   drosophila/side
@@ -731,6 +782,7 @@ test_expect_success 'update' '
 '
 
 cat >one/expect <<\EOF
+  drosophila/HEAD -> drosophila/main
   drosophila/another
   drosophila/main
   drosophila/side
@@ -743,7 +795,7 @@ EOF
 test_expect_success 'update with arguments' '
 	(
 		cd one &&
-		for b in $(git branch -r)
+		for b in $(git branch -r | grep -v HEAD)
 		do
 		git branch -r -d $b || exit 1
 		done &&
@@ -786,7 +838,7 @@ EOF
 test_expect_success 'update default' '
 	(
 		cd one &&
-		for b in $(git branch -r)
+		for b in $(git branch -r | grep -v HEAD)
 		do
 		git branch -r -d $b || exit 1
 		done &&
@@ -798,6 +850,7 @@ test_expect_success 'update default' '
 '
 
 cat >one/expect <<\EOF
+  drosophila/HEAD -> drosophila/main
   drosophila/another
   drosophila/main
   drosophila/side
@@ -820,7 +873,7 @@ test_expect_success 'update default (overridden, with funny whitespace)' '
 test_expect_success 'update (with remotes.default defined)' '
 	(
 		cd one &&
-		for b in $(git branch -r)
+		for b in $(git branch -r | grep -v HEAD)
 		do
 		git branch -r -d $b || exit 1
 		done &&
