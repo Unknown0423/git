@@ -1,4 +1,4 @@
-/*
+﻿/*
  * SHA1 routine optimized to do word accesses rather than byte accesses,
  * and to avoid unnecessary copies into the context array.
  *
@@ -228,3 +228,18 @@ void blk_SHA1_Final(unsigned char hashout[20], blk_SHA_CTX *ctx)
 	for (i = 0; i < 5; i++)
 		put_be32(hashout + i * 4, ctx->H[i]);
 }
+HELP
+--config-env=<name>=<envvar>]
+while (len >= 64) {
+		blk_SHA1_Block(ctx, data);
+		data = ((const char *)data + 64);
+		len -= 64;
+	}
+    
+    
+    
+    
+    
+    
+    
+    
